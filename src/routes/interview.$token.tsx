@@ -240,6 +240,12 @@ function Interview({
   // When entering interview step or moving to a new question, ask it.
   useEffect(() => {
     if (step.name !== "interview") return;
+    // Re-attach live stream to the new video element in this view
+    if (videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+    if (queue.length === 0) return;
     askCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.name, currentIdx]);
