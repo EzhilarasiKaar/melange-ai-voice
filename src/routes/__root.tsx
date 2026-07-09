@@ -85,14 +85,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "The editorial platform for KaarTech's Melange magazine. Invite leaders to complete AI-guided video interviews, then review transcripts, summaries, and pull quotes.",
       },
       { name: "author", content: "KaarTech Melange" },
-      { property: "og:title", content: "Melange AI Interviewer" },
+      { property: "og:title", content: "Melange AI Interviewer — KaarTech leadership stories" },
       {
         property: "og:description",
         content:
-          "Async AI-guided leadership interviews for the Melange editorial team.",
+          "The editorial platform for KaarTech's Melange magazine. Invite leaders to complete AI-guided video interviews, then review transcripts, summaries, and pull quotes.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Melange AI Interviewer — KaarTech leadership stories" },
+      { name: "twitter:description", content: "The editorial platform for KaarTech's Melange magazine. Invite leaders to complete AI-guided video interviews, then review transcripts, summaries, and pull quotes." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fcc2c45b-03f8-48ae-97c8-24cebeb6cb4e/id-preview-2374550a--7beb03f8-2910-4b61-a354-bd20d148ef07.lovable.app-1783579264899.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fcc2c45b-03f8-48ae-97c8-24cebeb6cb4e/id-preview-2374550a--7beb03f8-2910-4b61-a354-bd20d148ef07.lovable.app-1783579264899.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
