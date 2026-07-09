@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -24,8 +24,18 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/templates")({
-  component: TemplatesPage,
+  component: TemplatesRoute,
 });
+
+function TemplatesRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (pathname !== "/templates") {
+    return <Outlet />;
+  }
+
+  return <TemplatesPage />;
+}
 
 function TemplatesPage() {
   const listFn = useServerFn(listTemplates);
