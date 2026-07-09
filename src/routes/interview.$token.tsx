@@ -488,6 +488,14 @@ function Interview({
 
   // Interview
   const q = queue[currentIdx];
+  if (!q) {
+    return (
+      <StateScreen
+        title="No questions yet"
+        body="This interview template has no questions. Please contact the Melange editorial team."
+      />
+    );
+  }
   const mm = Math.floor(elapsed / 60).toString().padStart(2, "0");
   const ss = (elapsed % 60).toString().padStart(2, "0");
 
