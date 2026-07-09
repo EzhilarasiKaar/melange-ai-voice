@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InterviewTokenRouteImport } from './routes/interview.$token'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedInvitationsRouteImport } from './routes/_authenticated/invitations'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -31,6 +32,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InterviewTokenRoute = InterviewTokenRouteImport.update({
+  id: '/interview/$token',
+  path: '/interview/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/invitations': typeof AuthenticatedInvitationsRoute
   '/templates': typeof AuthenticatedTemplatesRouteWithChildren
+  '/interview/$token': typeof InterviewTokenRoute
   '/interviews/$id': typeof AuthenticatedInterviewsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
   '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/invitations': typeof AuthenticatedInvitationsRoute
   '/templates': typeof AuthenticatedTemplatesRouteWithChildren
+  '/interview/$token': typeof InterviewTokenRoute
   '/interviews/$id': typeof AuthenticatedInterviewsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
   '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/invitations': typeof AuthenticatedInvitationsRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRouteWithChildren
+  '/interview/$token': typeof InterviewTokenRoute
   '/_authenticated/interviews/$id': typeof AuthenticatedInterviewsIdRoute
   '/_authenticated/templates/$id': typeof AuthenticatedTemplatesIdRoute
   '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/invitations'
     | '/templates'
+    | '/interview/$token'
     | '/interviews/$id'
     | '/templates/$id'
     | '/api/public/upload-recording'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/invitations'
     | '/templates'
+    | '/interview/$token'
     | '/interviews/$id'
     | '/templates/$id'
     | '/api/public/upload-recording'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/invitations'
     | '/_authenticated/templates'
+    | '/interview/$token'
     | '/_authenticated/interviews/$id'
     | '/_authenticated/templates/$id'
     | '/api/public/upload-recording'
@@ -138,6 +150,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  InterviewTokenRoute: typeof InterviewTokenRoute
   ApiPublicUploadRecordingRoute: typeof ApiPublicUploadRecordingRoute
 }
 
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/interview/$token': {
+      id: '/interview/$token'
+      path: '/interview/$token'
+      fullPath: '/interview/$token'
+      preLoaderRoute: typeof InterviewTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/templates': {
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  InterviewTokenRoute: InterviewTokenRoute,
   ApiPublicUploadRecordingRoute: ApiPublicUploadRecordingRoute,
 }
 export const routeTree = rootRouteImport
