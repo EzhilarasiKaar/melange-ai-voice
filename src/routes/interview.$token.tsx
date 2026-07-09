@@ -240,6 +240,12 @@ function Interview({
   // When entering interview step or moving to a new question, ask it.
   useEffect(() => {
     if (step.name !== "interview") return;
+    // Re-attach live stream to the new video element in this view
+    if (videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+    if (queue.length === 0) return;
     askCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.name, currentIdx]);
@@ -482,6 +488,14 @@ function Interview({
 
   // Interview
   const q = queue[currentIdx];
+  if (!q) {
+    return (
+      <StateScreen
+        title="No questions yet"
+        body="This interview template has no questions. Please contact the Melange editorial team."
+      />
+    );
+  }
   const mm = Math.floor(elapsed / 60).toString().padStart(2, "0");
   const ss = (elapsed % 60).toString().padStart(2, "0");
 

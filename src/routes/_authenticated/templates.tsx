@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -32,6 +32,7 @@ function TemplatesPage() {
   const createFn = useServerFn(createTemplate);
   const deleteFn = useServerFn(deleteTemplate);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data } = useSuspenseQuery({
     queryKey: ["templates"],
     queryFn: () => listFn(),
@@ -45,12 +46,15 @@ function TemplatesPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await createFn({ data: { name, description, max_duration_seconds: duration } });
-      toast.success("Template created");
+      const created = await createFn({
+        data: { name, description, max_duration_seconds: duration },
+      });
+      toast.success("Template created — add your questions");
       setOpen(false);
       setName("");
       setDescription("");
       qc.invalidateQueries({ queryKey: ["templates"] });
+      navigate({ to: "/templates/$id", params: { id: created.id } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     }
@@ -158,9 +162,9 @@ function TemplatesPage() {
                 <Link
                   to="/templates/$id"
                   params={{ id: t.id }}
-                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
-                  Edit <ArrowUpRight className="size-3" />
+                  {qCount === 0 ? "Add questions" : "Edit"} <ArrowUpRight className="size-3" />
                 </Link>
               </div>
             </Card>
