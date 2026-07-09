@@ -9,38 +9,167 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InterviewTokenRouteImport } from './routes/interview.$token'
+import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
+import { Route as AuthenticatedInvitationsRouteImport } from './routes/_authenticated/invitations'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as ApiPublicUploadRecordingRouteImport } from './routes/api/public/upload-recording'
+import { Route as AuthenticatedTemplatesIdRouteImport } from './routes/_authenticated/templates.$id'
+import { Route as AuthenticatedInterviewsIdRouteImport } from './routes/_authenticated/interviews.$id'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InterviewTokenRoute = InterviewTokenRouteImport.update({
+  id: '/interview/$token',
+  path: '/interview/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedInvitationsRoute =
+  AuthenticatedInvitationsRouteImport.update({
+    id: '/invitations',
+    path: '/invitations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicUploadRecordingRoute =
+  ApiPublicUploadRecordingRouteImport.update({
+    id: '/api/public/upload-recording',
+    path: '/api/public/upload-recording',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedTemplatesIdRoute =
+  AuthenticatedTemplatesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedTemplatesRoute,
+  } as any)
+const AuthenticatedInterviewsIdRoute =
+  AuthenticatedInterviewsIdRouteImport.update({
+    id: '/interviews/$id',
+    path: '/interviews/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/invitations': typeof AuthenticatedInvitationsRoute
+  '/templates': typeof AuthenticatedTemplatesRouteWithChildren
+  '/interview/$token': typeof InterviewTokenRoute
+  '/interviews/$id': typeof AuthenticatedInterviewsIdRoute
+  '/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/invitations': typeof AuthenticatedInvitationsRoute
+  '/templates': typeof AuthenticatedTemplatesRouteWithChildren
+  '/interview/$token': typeof InterviewTokenRoute
+  '/interviews/$id': typeof AuthenticatedInterviewsIdRoute
+  '/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/invitations': typeof AuthenticatedInvitationsRoute
+  '/_authenticated/templates': typeof AuthenticatedTemplatesRouteWithChildren
+  '/interview/$token': typeof InterviewTokenRoute
+  '/_authenticated/interviews/$id': typeof AuthenticatedInterviewsIdRoute
+  '/_authenticated/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/invitations'
+    | '/templates'
+    | '/interview/$token'
+    | '/interviews/$id'
+    | '/templates/$id'
+    | '/api/public/upload-recording'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/invitations'
+    | '/templates'
+    | '/interview/$token'
+    | '/interviews/$id'
+    | '/templates/$id'
+    | '/api/public/upload-recording'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/invitations'
+    | '/_authenticated/templates'
+    | '/interview/$token'
+    | '/_authenticated/interviews/$id'
+    | '/_authenticated/templates/$id'
+    | '/api/public/upload-recording'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  InterviewTokenRoute: typeof InterviewTokenRoute
+  ApiPublicUploadRecordingRoute: typeof ApiPublicUploadRecordingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +177,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/interview/$token': {
+      id: '/interview/$token'
+      path: '/interview/$token'
+      fullPath: '/interview/$token'
+      preLoaderRoute: typeof InterviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/templates': {
+      id: '/_authenticated/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof AuthenticatedTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invitations': {
+      id: '/_authenticated/invitations'
+      path: '/invitations'
+      fullPath: '/invitations'
+      preLoaderRoute: typeof AuthenticatedInvitationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/upload-recording': {
+      id: '/api/public/upload-recording'
+      path: '/api/public/upload-recording'
+      fullPath: '/api/public/upload-recording'
+      preLoaderRoute: typeof ApiPublicUploadRecordingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/templates/$id': {
+      id: '/_authenticated/templates/$id'
+      path: '/$id'
+      fullPath: '/templates/$id'
+      preLoaderRoute: typeof AuthenticatedTemplatesIdRouteImport
+      parentRoute: typeof AuthenticatedTemplatesRoute
+    }
+    '/_authenticated/interviews/$id': {
+      id: '/_authenticated/interviews/$id'
+      path: '/interviews/$id'
+      fullPath: '/interviews/$id'
+      preLoaderRoute: typeof AuthenticatedInterviewsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedTemplatesRouteChildren {
+  AuthenticatedTemplatesIdRoute: typeof AuthenticatedTemplatesIdRoute
+}
+
+const AuthenticatedTemplatesRouteChildren: AuthenticatedTemplatesRouteChildren =
+  {
+    AuthenticatedTemplatesIdRoute: AuthenticatedTemplatesIdRoute,
+  }
+
+const AuthenticatedTemplatesRouteWithChildren =
+  AuthenticatedTemplatesRoute._addFileChildren(
+    AuthenticatedTemplatesRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedInvitationsRoute: typeof AuthenticatedInvitationsRoute
+  AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRouteWithChildren
+  AuthenticatedInterviewsIdRoute: typeof AuthenticatedInterviewsIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedInvitationsRoute: AuthenticatedInvitationsRoute,
+  AuthenticatedTemplatesRoute: AuthenticatedTemplatesRouteWithChildren,
+  AuthenticatedInterviewsIdRoute: AuthenticatedInterviewsIdRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  InterviewTokenRoute: InterviewTokenRoute,
+  ApiPublicUploadRecordingRoute: ApiPublicUploadRecordingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
