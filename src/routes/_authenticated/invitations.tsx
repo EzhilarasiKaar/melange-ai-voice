@@ -269,13 +269,14 @@ function InvitationsPage() {
                       >
                         <Copy className="size-4" />
                       </button>
-                      {inv.status === "completed" && (
+                      {(inv.status === "completed" || inv.status === "in_progress") && (
                         <Link
                           to="/interviews/$id"
                           params={{ id: inv.id }}
+                          title="View interview, transcripts and video"
                           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-primary hover:bg-brand-soft"
                         >
-                          Open <ArrowUpRight className="size-3" />
+                          View <ArrowUpRight className="size-3" />
                         </Link>
                       )}
                       {inv.status !== "completed" && inv.status !== "cancelled" && (
