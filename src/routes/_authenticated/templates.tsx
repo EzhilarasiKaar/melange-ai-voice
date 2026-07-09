@@ -162,9 +162,9 @@ function TemplatesPage() {
                 <Link
                   to="/templates/$id"
                   params={{ id: t.id }}
-                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
-                  Edit <ArrowUpRight className="size-3" />
+                  {qCount === 0 ? "Add questions" : "Edit"} <ArrowUpRight className="size-3" />
                 </Link>
               </div>
             </Card>
