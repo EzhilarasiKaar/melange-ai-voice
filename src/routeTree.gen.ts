@@ -10,33 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicUploadRecordingRouteImport } from './routes/api/public/upload-recording'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicUploadRecordingRoute =
+  ApiPublicUploadRecordingRouteImport.update({
+    id: '/api/public/upload-recording',
+    path: '/api/public/upload-recording',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/upload-recording'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/upload-recording'
+  id: '__root__' | '/' | '/api/public/upload-recording'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicUploadRecordingRoute: typeof ApiPublicUploadRecordingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +59,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/upload-recording': {
+      id: '/api/public/upload-recording'
+      path: '/api/public/upload-recording'
+      fullPath: '/api/public/upload-recording'
+      preLoaderRoute: typeof ApiPublicUploadRecordingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicUploadRecordingRoute: ApiPublicUploadRecordingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
