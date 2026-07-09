@@ -32,6 +32,7 @@ function TemplatesPage() {
   const createFn = useServerFn(createTemplate);
   const deleteFn = useServerFn(deleteTemplate);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data } = useSuspenseQuery({
     queryKey: ["templates"],
     queryFn: () => listFn(),
@@ -45,12 +46,15 @@ function TemplatesPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await createFn({ data: { name, description, max_duration_seconds: duration } });
-      toast.success("Template created");
+      const created = await createFn({
+        data: { name, description, max_duration_seconds: duration },
+      });
+      toast.success("Template created — add your questions");
       setOpen(false);
       setName("");
       setDescription("");
       qc.invalidateQueries({ queryKey: ["templates"] });
+      navigate({ to: "/templates/$id", params: { id: created.id } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     }
