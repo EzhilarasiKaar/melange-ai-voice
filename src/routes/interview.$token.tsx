@@ -424,12 +424,13 @@ function Interview({
               </Button>
             ) : (
               <Button
-                onClick={() => setStep({ name: "interview" })}
+                onClick={() => setStep({ name: "preview" })}
                 size="lg"
                 className="rounded-full"
               >
-                I&apos;m ready — begin <ArrowRight className="ml-2 size-4" />
+                Continue to preview <ArrowRight className="ml-2 size-4" />
               </Button>
+
             )}
           </div>
         </div>
