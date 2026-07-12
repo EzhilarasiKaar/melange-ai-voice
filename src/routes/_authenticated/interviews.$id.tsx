@@ -160,14 +160,24 @@ function InterviewViewer() {
           </p>
         </div>
         {data.recordings.length > 0 && (
-          <Button
-            variant="outline"
-            onClick={downloadTranscript}
-            className="rounded-full"
-          >
-            <Download className="mr-2 size-4" />
-            Download transcript
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={downloadTranscript}
+              className="rounded-full"
+            >
+              <Download className="mr-2 size-4" />
+              Transcript (.txt)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={downloadSrt}
+              className="rounded-full"
+            >
+              <Download className="mr-2 size-4" />
+              Subtitles (.srt)
+            </Button>
+          </div>
         )}
       </div>
 
