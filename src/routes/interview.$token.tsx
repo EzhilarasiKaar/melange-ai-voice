@@ -38,9 +38,11 @@ type Question = {
 type Step =
   | { name: "welcome" }
   | { name: "permissions" }
+  | { name: "preview" }
   | { name: "interview" }
   | { name: "submitting" }
   | { name: "done" };
+
 
 function InterviewPage() {
   const { token } = Route.useParams();
