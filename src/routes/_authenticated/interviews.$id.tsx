@@ -85,6 +85,57 @@ function InterviewViewer() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function fmtSrtTime(totalSeconds: number) {
+    const ms = Math.max(0, Math.round(totalSeconds * 1000));
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const millis = ms % 1000;
+    const pad = (n: number, w = 2) => n.toString().padStart(w, "0");
+    return `${pad(h)}:${pad(m)}:${pad(s)},${pad(millis, 3)}`;
+  }
+
+  function downloadSrt() {
+    const cues: string[] = [];
+    let cursor = 0;
+    let idx = 1;
+    data.recordings.forEach((r) => {
+      const q = (r.template_questions as unknown as { prompt: string } | null)?.prompt ?? "";
+      const dur = Math.max(1, r.duration_seconds ?? 5);
+      const transcript = (r.transcript ?? "").trim();
+      // Question cue (2s)
+      const qStart = cursor;
+      const qEnd = cursor + 2;
+      cues.push(
+        `${idx++}\n${fmtSrtTime(qStart)} --> ${fmtSrtTime(qEnd)}\n[Q${r.position + 1}${r.is_follow_up ? " follow-up" : ""}] ${q}\n`
+      );
+      cursor = qEnd;
+
+      if (transcript) {
+        // Split transcript into ~sentences and distribute across the recording duration
+        const parts = transcript.match(/[^.!?]+[.!?]+|\S[^.!?]*$/g) ?? [transcript];
+        const per = dur / parts.length;
+        parts.forEach((p) => {
+          const start = cursor;
+          const end = cursor + per;
+          cues.push(`${idx++}\n${fmtSrtTime(start)} --> ${fmtSrtTime(end)}\n${p.trim()}\n`);
+          cursor = end;
+        });
+      } else {
+        cursor += dur;
+      }
+    });
+    const blob = new Blob([cues.join("\n")], { type: "application/x-subrip;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${inv.leader_name.replace(/\s+/g, "_")}-transcript.srt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
 
   const inv = data.invitation;
   const summary = data.summary;
@@ -109,14 +160,24 @@ function InterviewViewer() {
           </p>
         </div>
         {data.recordings.length > 0 && (
-          <Button
-            variant="outline"
-            onClick={downloadTranscript}
-            className="rounded-full"
-          >
-            <Download className="mr-2 size-4" />
-            Download transcript
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={downloadTranscript}
+              className="rounded-full"
+            >
+              <Download className="mr-2 size-4" />
+              Transcript (.txt)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={downloadSrt}
+              className="rounded-full"
+            >
+              <Download className="mr-2 size-4" />
+              Subtitles (.srt)
+            </Button>
+          </div>
         )}
       </div>
 
