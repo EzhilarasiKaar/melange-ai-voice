@@ -438,7 +438,20 @@ function Interview({
     );
   }
 
+  if (step.name === "preview") {
+    return (
+      <PublicShell>
+        <PreviewStep
+          stream={streamRef.current}
+          onBack={() => setStep({ name: "permissions" })}
+          onContinue={() => setStep({ name: "interview" })}
+        />
+      </PublicShell>
+    );
+  }
+
   if (step.name === "submitting") {
+
     return (
       <PublicShell>
         <div className="flex min-h-[70vh] items-center justify-center">
