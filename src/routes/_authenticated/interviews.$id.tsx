@@ -167,15 +167,27 @@ function InterviewViewer() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => play(r.storage_path, r.id)}
-                      className="rounded-full"
-                    >
-                      <Play className="mr-1 size-3.5" />
-                      {activeId === r.id ? "Loading…" : "Play"}
-                    </Button>
+                    <div className="flex shrink-0 flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => play(r.storage_path, r.id)}
+                        className="rounded-full"
+                      >
+                        <Play className="mr-1 size-3.5" />
+                        {activeId === r.id ? "Loading…" : "Play"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => downloadVideo(r.storage_path, r.position, r.is_follow_up)}
+                        className="rounded-full"
+                      >
+                        <Download className="mr-1 size-3.5" />
+                        Download
+                      </Button>
+                    </div>
+
                   </div>
                 </Card>
               );
