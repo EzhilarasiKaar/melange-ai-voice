@@ -108,7 +108,18 @@ function InterviewViewer() {
             {[inv.designation, inv.department].filter(Boolean).join(" · ")}
           </p>
         </div>
+        {data.recordings.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={downloadTranscript}
+            className="rounded-full"
+          >
+            <Download className="mr-2 size-4" />
+            Download transcript
+          </Button>
+        )}
       </div>
+
 
       {summary?.suggested_headline && (
         <Card className="mt-8 border-primary/20 bg-brand-soft/40 p-8 shadow-none">
