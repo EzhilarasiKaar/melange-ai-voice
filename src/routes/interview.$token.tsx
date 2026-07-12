@@ -38,9 +38,11 @@ type Question = {
 type Step =
   | { name: "welcome" }
   | { name: "permissions" }
+  | { name: "preview" }
   | { name: "interview" }
   | { name: "submitting" }
   | { name: "done" };
+
 
 function InterviewPage() {
   const { token } = Route.useParams();
@@ -422,12 +424,13 @@ function Interview({
               </Button>
             ) : (
               <Button
-                onClick={() => setStep({ name: "interview" })}
+                onClick={() => setStep({ name: "preview" })}
                 size="lg"
                 className="rounded-full"
               >
-                I&apos;m ready — begin <ArrowRight className="ml-2 size-4" />
+                Continue to preview <ArrowRight className="ml-2 size-4" />
               </Button>
+
             )}
           </div>
         </div>
@@ -435,7 +438,20 @@ function Interview({
     );
   }
 
+  if (step.name === "preview") {
+    return (
+      <PublicShell>
+        <PreviewStep
+          stream={streamRef.current}
+          onBack={() => setStep({ name: "permissions" })}
+          onContinue={() => setStep({ name: "interview" })}
+        />
+      </PublicShell>
+    );
+  }
+
   if (step.name === "submitting") {
+
     return (
       <PublicShell>
         <div className="flex min-h-[70vh] items-center justify-center">
@@ -594,3 +610,190 @@ function PublicShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+function PreviewStep({
+  stream,
+  onBack,
+  onContinue,
+}: {
+  stream: MediaStream | null;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const videoEl = useRef<HTMLVideoElement | null>(null);
+  const [level, setLevel] = useState(0);
+  const [testing, setTesting] = useState(false);
+  const [testBlobUrl, setTestBlobUrl] = useState<string | null>(null);
+  const testRecRef = useRef<MediaRecorder | null>(null);
+  const testChunksRef = useRef<BlobPart[]>([]);
+
+  useEffect(() => {
+    if (videoEl.current && stream) {
+      videoEl.current.srcObject = stream;
+      videoEl.current.play().catch(() => {});
+    }
+  }, [stream]);
+
+  // Mic level meter
+  useEffect(() => {
+    if (!stream) return;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    const ctx = new AudioCtx();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let raf = 0;
+    const tick = () => {
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      setLevel(Math.min(1, rms * 3));
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => {
+      cancelAnimationFrame(raf);
+      src.disconnect();
+      ctx.close().catch(() => {});
+    };
+  }, [stream]);
+
+  function startTestRecording() {
+    if (!stream) return;
+    if (testBlobUrl) {
+      URL.revokeObjectURL(testBlobUrl);
+      setTestBlobUrl(null);
+    }
+    testChunksRef.current = [];
+    let mimeType = "video/webm;codecs=vp9,opus";
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "video/webm";
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "";
+    const rec = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
+    testRecRef.current = rec;
+    rec.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) testChunksRef.current.push(e.data);
+    };
+    rec.onstop = () => {
+      const blob = new Blob(testChunksRef.current, {
+        type: rec.mimeType || "video/webm",
+      });
+      testChunksRef.current = [];
+      setTestBlobUrl(URL.createObjectURL(blob));
+      setTesting(false);
+    };
+    rec.start(500);
+    setTesting(true);
+    setTimeout(() => {
+      if (testRecRef.current && testRecRef.current.state !== "inactive") {
+        testRecRef.current.stop();
+      }
+    }, 5000);
+  }
+
+  function stopTestRecording() {
+    const rec = testRecRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+  }
+
+  useEffect(() => {
+    return () => {
+      if (testBlobUrl) URL.revokeObjectURL(testBlobUrl);
+    };
+  }, [testBlobUrl]);
+
+  return (
+    <div className="mx-auto max-w-3xl px-6 py-16">
+      <h1 className="font-display text-4xl">Preview your setup</h1>
+      <p className="mt-3 text-muted-foreground">
+        Check that you look and sound the way you want before we begin. Record a short
+        test clip and play it back — nothing here is saved.
+      </p>
+
+      <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-black">
+        <video ref={videoEl} muted playsInline className="aspect-video w-full" />
+      </div>
+
+      <div className="mt-6">
+        <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <Mic className="size-3.5" /> Microphone level
+          </span>
+          <span>{testing ? "Recording test…" : "Speak to test"}</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-75"
+            style={{ width: `${Math.round(level * 100)}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="rounded-xl border border-border p-4">
+          <p className="text-sm font-medium">Record a 5-second test</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Optional. Confirms your camera and mic are capturing correctly.
+          </p>
+          <div className="mt-3 flex gap-2">
+            {!testing ? (
+              <Button
+                variant="outline"
+                onClick={startTestRecording}
+                className="rounded-full"
+                size="sm"
+              >
+                <Video className="mr-2 size-4" />
+                {testBlobUrl ? "Record again" : "Start test"}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={stopTestRecording}
+                className="rounded-full"
+                size="sm"
+              >
+                <Square className="mr-2 size-4" /> Stop
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border p-4">
+          <p className="text-sm font-medium">Playback</p>
+          {testBlobUrl ? (
+            <video
+              src={testBlobUrl}
+              controls
+              playsInline
+              className="mt-3 aspect-video w-full rounded-lg bg-black"
+            />
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Your test clip will appear here.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-10 flex flex-wrap gap-3">
+        <Button variant="outline" onClick={onBack} className="rounded-full">
+          Back
+        </Button>
+        <Button onClick={onContinue} size="lg" className="rounded-full">
+          I&apos;m ready — begin interview <ArrowRight className="ml-2 size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
