@@ -3,9 +3,10 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getInterview, getRecordingUrl } from "@/lib/interview-editor.functions";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Play, Quote } from "lucide-react";
+import { ArrowLeft, Play, Quote, Download } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/interviews/$id")({
   component: InterviewViewer,
@@ -30,6 +31,61 @@ function InterviewViewer() {
     setActiveUrl(url);
   }
 
+  async function downloadFile(url: string, filename: string) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err) {
+      console.error(err);
+      toast.error("Download failed");
+    }
+  }
+
+  async function downloadVideo(path: string, position: number, isFollowUp: boolean) {
+    const { url } = await urlFn({ data: { path } });
+    const ext = path.split(".").pop() || "webm";
+    const name = `${inv.leader_name.replace(/\s+/g, "_")}-q${position + 1}${isFollowUp ? "-followup" : ""}.${ext}`;
+    await downloadFile(url, name);
+  }
+
+  function downloadTranscript() {
+    const lines: string[] = [];
+    lines.push(`Interview transcript — ${inv.leader_name}`);
+    if (inv.designation || inv.department) {
+      lines.push([inv.designation, inv.department].filter(Boolean).join(" · "));
+    }
+    lines.push("");
+    if (summary?.executive_summary) {
+      lines.push("Executive summary:");
+      lines.push(summary.executive_summary);
+      lines.push("");
+    }
+    data.recordings.forEach((r) => {
+      const q = (r.template_questions as unknown as { prompt: string } | null)?.prompt ?? "";
+      lines.push(`Q${r.position + 1}${r.is_follow_up ? " (follow-up)" : ""}: ${q}`);
+      lines.push(`A: ${r.transcript ?? "(no transcript)"}`);
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${inv.leader_name.replace(/\s+/g, "_")}-transcript.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+
   const inv = data.invitation;
   const summary = data.summary;
 
@@ -52,7 +108,18 @@ function InterviewViewer() {
             {[inv.designation, inv.department].filter(Boolean).join(" · ")}
           </p>
         </div>
+        {data.recordings.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={downloadTranscript}
+            className="rounded-full"
+          >
+            <Download className="mr-2 size-4" />
+            Download transcript
+          </Button>
+        )}
       </div>
+
 
       {summary?.suggested_headline && (
         <Card className="mt-8 border-primary/20 bg-brand-soft/40 p-8 shadow-none">
@@ -100,15 +167,27 @@ function InterviewViewer() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => play(r.storage_path, r.id)}
-                      className="rounded-full"
-                    >
-                      <Play className="mr-1 size-3.5" />
-                      {activeId === r.id ? "Loading…" : "Play"}
-                    </Button>
+                    <div className="flex shrink-0 flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => play(r.storage_path, r.id)}
+                        className="rounded-full"
+                      >
+                        <Play className="mr-1 size-3.5" />
+                        {activeId === r.id ? "Loading…" : "Play"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => downloadVideo(r.storage_path, r.position, r.is_follow_up)}
+                        className="rounded-full"
+                      >
+                        <Download className="mr-1 size-3.5" />
+                        Download
+                      </Button>
+                    </div>
+
                   </div>
                 </Card>
               );
