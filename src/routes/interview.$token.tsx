@@ -214,9 +214,17 @@ function Interview({
       : new MediaRecorder(streamRef.current);
     recorderRef.current = rec;
     rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
+      if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
     };
-    rec.start();
+    rec.onstop = async () => {
+      const type = rec.mimeType || "video/webm";
+      const blob = new Blob(chunksRef.current, { type });
+      chunksRef.current = [];
+      setPhase("processing");
+      await uploadBlob(blob);
+    };
+    // Flush chunks every second so data survives even if the final chunk is delayed
+    rec.start(1000);
     setElapsed(0);
     setPhase("recording");
   }
@@ -225,7 +233,6 @@ function Interview({
     const rec = recorderRef.current;
     if (!rec || rec.state === "inactive") return;
     rec.stop();
-    setPhase("processing");
   }
 
   async function askCurrent() {
@@ -250,24 +257,6 @@ function Interview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.name, currentIdx]);
 
-  // After recording stops, upload
-  useEffect(() => {
-    if (phase !== "processing") return;
-    const rec = recorderRef.current;
-    if (!rec) return;
-    const handle = async () => {
-      // Wait for last dataavailable
-      await new Promise<void>((resolve) => {
-        rec.onstop = () => resolve();
-        if (rec.state === "inactive") resolve();
-      });
-      const blob = new Blob(chunksRef.current, { type: rec.mimeType || "video/webm" });
-      chunksRef.current = [];
-      await uploadBlob(blob);
-    };
-    handle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
   async function uploadBlob(blob: Blob) {
     setUploading(true);
