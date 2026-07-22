@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import {
-  Sparkles,
   Video,
   Mic,
   Camera,
@@ -19,8 +18,10 @@ import {
   Square,
   RotateCcw,
   ArrowRight,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
+import kaartechLogo from "@/assets/kaartech-logo.png.asset.json";
 
 export const Route = createFileRoute("/interview/$token")({
   ssr: false,
@@ -187,22 +188,79 @@ function Interview({
     setStep({ name: "permissions" });
   }
 
-  function speak(text: string): Promise<void> {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  async function fetchTtsBlob(text: string): Promise<string | null> {
+    try {
+      const res = await fetch("/api/public/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(await res.text().catch(() => "TTS failed"));
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      console.error("TTS failed", err);
+      return null;
+    }
+  }
+
+  function playAudio(url: string): Promise<void> {
     return new Promise((resolve) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-        resolve();
-        return;
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
       }
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.98;
-      u.pitch = 1;
-      u.onend = () => resolve();
-      u.onerror = () => resolve();
-      window.speechSynthesis.speak(u);
-      // Fallback: resolve after estimated max duration to avoid hangs
-      setTimeout(() => resolve(), Math.min(20000, 3000 + text.length * 60));
+      const a = audioRef.current;
+      a.src = url;
+      a.onended = () => resolve();
+      a.onerror = () => resolve();
+      a.play().catch(() => resolve());
     });
+  }
+
+  async function speak(text: string): Promise<void> {
+    // Stop any playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    const url = await fetchTtsBlob(text);
+    if (!url) {
+      // Fallback to browser speech synthesis
+      return new Promise((resolve) => {
+        if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+          resolve();
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.92;
+        u.onend = () => resolve();
+        u.onerror = () => resolve();
+        window.speechSynthesis.speak(u);
+      });
+    }
+    audioUrlRef.current = url;
+    await playAudio(url);
+  }
+
+  async function replayQuestion() {
+    const q = queue[currentIdx];
+    if (!q) return;
+    if (audioUrlRef.current) {
+      await playAudio(audioUrlRef.current);
+      return;
+    }
+    const url = await fetchTtsBlob(q.prompt);
+    if (url) {
+      audioUrlRef.current = url;
+      await playAudio(url);
+    }
   }
 
   async function beginRecording() {
@@ -518,12 +576,12 @@ function Interview({
         <div className="grid gap-8 lg:grid-cols-[1fr,360px]">
           <div>
             <div className="flex items-start gap-4">
-              <div className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                <Sparkles className="size-5" />
+              <div className="grid size-12 shrink-0 place-items-center rounded-xl border border-border bg-white p-1.5">
+                <img src={kaartechLogo.url} alt="KaarTech" className="h-full w-full object-contain" />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Melange AI
+                  Melange AI Interviewer
                 </p>
                 <h2 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
                   {q.prompt}
@@ -531,7 +589,7 @@ function Interview({
               </div>
             </div>
 
-            <div className="mt-10 flex items-center gap-4">
+            <div className="mt-10 flex flex-wrap items-center gap-4">
               {phase === "speaking" && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="inline-flex size-2 animate-record rounded-full bg-primary" />
@@ -547,6 +605,13 @@ function Interview({
                       {mm}:{ss} / {Math.floor(maxDuration / 60)}:{(maxDuration % 60).toString().padStart(2, "0")}
                     </span>
                   </div>
+                  <Button
+                    variant="outline"
+                    onClick={replayQuestion}
+                    className="rounded-full"
+                  >
+                    <Volume2 className="mr-2 size-4" /> Play question again
+                  </Button>
                   <Button onClick={stopRecording} className="ml-auto rounded-full" size="lg">
                     <Square className="mr-2 size-4" /> Stop &amp; save
                   </Button>
@@ -594,14 +659,12 @@ function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-6 py-5">
-          <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="size-4" />
-          </div>
-          <div className="leading-tight">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
+          <img src={kaartechLogo.url} alt="KaarTech" className="h-9 w-auto" />
+          <div className="ml-2 hidden border-l border-border pl-3 leading-tight sm:block">
             <p className="text-sm font-semibold tracking-tight">Melange</p>
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              AI Interviewer
+              AI Leadership Interviewer
             </p>
           </div>
         </div>
