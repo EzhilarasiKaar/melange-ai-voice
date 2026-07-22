@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Sparkles, Video, FileText, Wand2 } from "lucide-react";
+import { ArrowRight, Video, FileText, Wand2 } from "lucide-react";
+import kaartechLogo from "@/assets/kaartech-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -9,15 +10,13 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-2.5">
-            <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="size-4" />
-            </div>
-            <div className="leading-tight">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <img src={kaartechLogo.url} alt="KaarTech" className="h-10 w-auto" />
+            <div className="ml-1 border-l border-border pl-3 leading-tight">
               <p className="text-sm font-semibold tracking-tight">Melange</p>
               <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                AI Interviewer
+                AI Leadership Interviewer
               </p>
             </div>
           </div>
@@ -35,17 +34,18 @@ function Landing() {
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
               <span className="size-1.5 rounded-full bg-primary" />
-              For the Melange editorial team at KaarTech
+              For KaarTech's C-Suite storytelling — the Melange editorial team
             </span>
             <h1 className="mt-6 font-display text-6xl leading-[1.02] text-foreground md:text-7xl">
-              Leadership interviews,
+              AI is reshaping leadership.
               <br />
-              <span className="italic text-primary">on their own time.</span>
+              <span className="text-primary">Capture how, in their words.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-              Invite leaders to a 15-minute AI-guided video interview. We record every
-              response, transcribe it verbatim, and hand you polished editorial materials
-              — summaries, themes, pull quotes, and headline suggestions.
+              Invite KaarTech leaders to a 15-minute AI-guided video interview about the
+              changes AI is driving inside their teams. We record every response, transcribe
+              it verbatim, and deliver polished editorial materials — summaries, themes,
+              pull quotes, and headline suggestions — ready for the next Melange issue.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link
