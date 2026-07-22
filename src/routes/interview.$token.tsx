@@ -576,12 +576,12 @@ function Interview({
         <div className="grid gap-8 lg:grid-cols-[1fr,360px]">
           <div>
             <div className="flex items-start gap-4">
-              <div className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                <Sparkles className="size-5" />
+              <div className="grid size-12 shrink-0 place-items-center rounded-xl border border-border bg-white p-1.5">
+                <img src={kaartechLogo.url} alt="KaarTech" className="h-full w-full object-contain" />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Melange AI
+                  Melange AI Interviewer
                 </p>
                 <h2 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
                   {q.prompt}
@@ -589,7 +589,7 @@ function Interview({
               </div>
             </div>
 
-            <div className="mt-10 flex items-center gap-4">
+            <div className="mt-10 flex flex-wrap items-center gap-4">
               {phase === "speaking" && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="inline-flex size-2 animate-record rounded-full bg-primary" />
@@ -605,6 +605,13 @@ function Interview({
                       {mm}:{ss} / {Math.floor(maxDuration / 60)}:{(maxDuration % 60).toString().padStart(2, "0")}
                     </span>
                   </div>
+                  <Button
+                    variant="outline"
+                    onClick={replayQuestion}
+                    className="rounded-full"
+                  >
+                    <Volume2 className="mr-2 size-4" /> Play question again
+                  </Button>
                   <Button onClick={stopRecording} className="ml-auto rounded-full" size="lg">
                     <Square className="mr-2 size-4" /> Stop &amp; save
                   </Button>
@@ -652,14 +659,12 @@ function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-6 py-5">
-          <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="size-4" />
-          </div>
-          <div className="leading-tight">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
+          <img src={kaartechLogo.url} alt="KaarTech" className="h-9 w-auto" />
+          <div className="ml-2 hidden border-l border-border pl-3 leading-tight sm:block">
             <p className="text-sm font-semibold tracking-tight">Melange</p>
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              AI Interviewer
+              AI Leadership Interviewer
             </p>
           </div>
         </div>
