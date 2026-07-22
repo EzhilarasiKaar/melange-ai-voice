@@ -17,6 +17,7 @@ import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedInvitationsRouteImport } from './routes/_authenticated/invitations'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ApiPublicUploadRecordingRouteImport } from './routes/api/public/upload-recording'
+import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
 import { Route as AuthenticatedTemplatesIdRouteImport } from './routes/_authenticated/templates.$id'
 import { Route as AuthenticatedInterviewsIdRouteImport } from './routes/_authenticated/interviews.$id'
 
@@ -61,6 +62,11 @@ const ApiPublicUploadRecordingRoute =
     path: '/api/public/upload-recording',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
+  id: '/api/public/tts',
+  path: '/api/public/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedTemplatesIdRoute =
   AuthenticatedTemplatesIdRouteImport.update({
     id: '/$id',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/interview/$token': typeof InterviewTokenRoute
   '/interviews/$id': typeof AuthenticatedInterviewsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRoutesByTo {
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/interview/$token': typeof InterviewTokenRoute
   '/interviews/$id': typeof AuthenticatedInterviewsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRoutesById {
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/interview/$token': typeof InterviewTokenRoute
   '/_authenticated/interviews/$id': typeof AuthenticatedInterviewsIdRoute
   '/_authenticated/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/upload-recording': typeof ApiPublicUploadRecordingRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/interview/$token'
     | '/interviews/$id'
     | '/templates/$id'
+    | '/api/public/tts'
     | '/api/public/upload-recording'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/interview/$token'
     | '/interviews/$id'
     | '/templates/$id'
+    | '/api/public/tts'
     | '/api/public/upload-recording'
   id:
     | '__root__'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/interview/$token'
     | '/_authenticated/interviews/$id'
     | '/_authenticated/templates/$id'
+    | '/api/public/tts'
     | '/api/public/upload-recording'
   fileRoutesById: FileRoutesById
 }
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   InterviewTokenRoute: typeof InterviewTokenRoute
+  ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicUploadRecordingRoute: typeof ApiPublicUploadRecordingRoute
 }
 
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicUploadRecordingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/tts': {
+      id: '/api/public/tts'
+      path: '/api/public/tts'
+      fullPath: '/api/public/tts'
+      preLoaderRoute: typeof ApiPublicTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/templates/$id': {
       id: '/_authenticated/templates/$id'
       path: '/$id'
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   InterviewTokenRoute: InterviewTokenRoute,
+  ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicUploadRecordingRoute: ApiPublicUploadRecordingRoute,
 }
 export const routeTree = rootRouteImport

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import {
-  Sparkles,
   Video,
   Mic,
   Camera,
@@ -19,8 +18,10 @@ import {
   Square,
   RotateCcw,
   ArrowRight,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
+import kaartechLogo from "@/assets/kaartech-logo.png.asset.json";
 
 export const Route = createFileRoute("/interview/$token")({
   ssr: false,
@@ -187,22 +188,79 @@ function Interview({
     setStep({ name: "permissions" });
   }
 
-  function speak(text: string): Promise<void> {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  async function fetchTtsBlob(text: string): Promise<string | null> {
+    try {
+      const res = await fetch("/api/public/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(await res.text().catch(() => "TTS failed"));
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      console.error("TTS failed", err);
+      return null;
+    }
+  }
+
+  function playAudio(url: string): Promise<void> {
     return new Promise((resolve) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-        resolve();
-        return;
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
       }
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.98;
-      u.pitch = 1;
-      u.onend = () => resolve();
-      u.onerror = () => resolve();
-      window.speechSynthesis.speak(u);
-      // Fallback: resolve after estimated max duration to avoid hangs
-      setTimeout(() => resolve(), Math.min(20000, 3000 + text.length * 60));
+      const a = audioRef.current;
+      a.src = url;
+      a.onended = () => resolve();
+      a.onerror = () => resolve();
+      a.play().catch(() => resolve());
     });
+  }
+
+  async function speak(text: string): Promise<void> {
+    // Stop any playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    const url = await fetchTtsBlob(text);
+    if (!url) {
+      // Fallback to browser speech synthesis
+      return new Promise((resolve) => {
+        if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+          resolve();
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.92;
+        u.onend = () => resolve();
+        u.onerror = () => resolve();
+        window.speechSynthesis.speak(u);
+      });
+    }
+    audioUrlRef.current = url;
+    await playAudio(url);
+  }
+
+  async function replayQuestion() {
+    const q = queue[currentIdx];
+    if (!q) return;
+    if (audioUrlRef.current) {
+      await playAudio(audioUrlRef.current);
+      return;
+    }
+    const url = await fetchTtsBlob(q.prompt);
+    if (url) {
+      audioUrlRef.current = url;
+      await playAudio(url);
+    }
   }
 
   async function beginRecording() {
