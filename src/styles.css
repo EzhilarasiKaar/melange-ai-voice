@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lato", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lato", ui-serif, Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -43,68 +44,52 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 
-  /* Neutral canvas */
-  --background: oklch(0.995 0.002 240);
-  --foreground: oklch(0.18 0.02 250);
+  /* KaarTech signature palette
+     Primary Red   #9d0102
+     Primary Grey  #c0c0c0
+     Dark Grey     #606062
+  */
+
+  /* White canvas */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.28 0.008 285);   /* dark grey #606062-ish for body */
   --surface: oklch(1 0 0);
-  --surface-muted: oklch(0.975 0.004 250);
+  --surface-muted: oklch(0.975 0.002 285);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 250);
+  --card-foreground: oklch(0.22 0.006 285);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 250);
+  --popover-foreground: oklch(0.22 0.006 285);
 
-  /* Blue primary — enterprise trust */
-  --brand: oklch(0.52 0.19 258);
-  --brand-foreground: oklch(0.99 0.005 240);
-  --brand-soft: oklch(0.955 0.03 258);
-  --primary: oklch(0.52 0.19 258);
-  --primary-foreground: oklch(0.99 0.005 240);
+  /* Deep KaarTech red */
+  --brand: oklch(0.42 0.18 27);
+  --brand-foreground: oklch(1 0 0);
+  --brand-soft: oklch(0.965 0.02 27);
+  --primary: oklch(0.42 0.18 27);
+  --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.965 0.005 250);
-  --secondary-foreground: oklch(0.22 0.02 250);
-  --muted: oklch(0.965 0.005 250);
-  --muted-foreground: oklch(0.5 0.02 250);
-  --accent: oklch(0.955 0.03 258);
-  --accent-foreground: oklch(0.35 0.16 258);
+  --secondary: oklch(0.965 0.003 285);
+  --secondary-foreground: oklch(0.28 0.008 285);
+  --muted: oklch(0.965 0.003 285);
+  --muted-foreground: oklch(0.48 0.006 285);
+  --accent: oklch(0.965 0.02 27);
+  --accent-foreground: oklch(0.42 0.18 27);
 
-  --destructive: oklch(0.58 0.22 25);
-  --destructive-foreground: oklch(0.99 0.005 240);
-  --recording: oklch(0.62 0.22 22);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+  --recording: oklch(0.55 0.22 27);
 
-  --border: oklch(0.925 0.008 250);
-  --input: oklch(0.925 0.008 250);
-  --ring: oklch(0.52 0.19 258);
+  --border: oklch(0.88 0.003 285);       /* soft grey border, close to #c0c0c0 */
+  --input: oklch(0.88 0.003 285);
+  --ring: oklch(0.42 0.18 27);
 }
 
 .dark {
-  --background: oklch(0.14 0.02 250);
-  --foreground: oklch(0.98 0.005 240);
-  --surface: oklch(0.18 0.02 250);
-  --surface-muted: oklch(0.22 0.02 250);
-  --card: oklch(0.18 0.02 250);
-  --card-foreground: oklch(0.98 0.005 240);
-  --popover: oklch(0.18 0.02 250);
-  --popover-foreground: oklch(0.98 0.005 240);
-  --brand: oklch(0.7 0.17 258);
-  --brand-foreground: oklch(0.14 0.02 250);
-  --brand-soft: oklch(0.28 0.08 258);
-  --primary: oklch(0.7 0.17 258);
-  --primary-foreground: oklch(0.14 0.02 250);
-  --secondary: oklch(0.24 0.02 250);
-  --secondary-foreground: oklch(0.98 0.005 240);
-  --muted: oklch(0.24 0.02 250);
-  --muted-foreground: oklch(0.7 0.02 250);
-  --accent: oklch(0.28 0.08 258);
-  --accent-foreground: oklch(0.9 0.05 258);
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.98 0.005 240);
-  --recording: oklch(0.68 0.22 22);
-  --border: oklch(0.28 0.02 250 / 60%);
-  --input: oklch(0.28 0.02 250 / 60%);
-  --ring: oklch(0.7 0.17 258);
+  /* Keep app background white per request; expose dark tokens minimally */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.28 0.008 285);
 }
 
 @layer base {
@@ -119,17 +104,19 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "ss01", "cv02";
   }
 
-  h1, h2, h3 {
-    letter-spacing: -0.02em;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+    color: oklch(0.22 0.006 285);
   }
 }
 
 @utility font-display {
-  font-family: var(--font-serif);
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 @keyframes pulse-record {
