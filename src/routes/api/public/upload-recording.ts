@@ -4,13 +4,29 @@ import { createFileRoute } from "@tanstack/react-router";
 //
 // action="get_upload_url": returns { path, token } for supabase-js
 //   uploadToSignedUrl() — the browser PUTs the video directly to Storage.
-// action="finalize": records the interview_recordings row and, when the
-//   video is small enough, transcribes it via the Lovable AI gateway.
+// action="finalize": records the interview_recordings row only. Do not
+// download/process the uploaded video here — large recordings can exceed
+// serverless memory limits and must remain a direct browser-to-storage upload.
 export const Route = createFileRoute("/api/public/upload-recording")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
+          const contentType = request.headers.get("content-type") ?? "";
+          const contentLength = Number(request.headers.get("content-length") ?? 0);
+          if (!contentType.toLowerCase().includes("application/json")) {
+            return json(
+              {
+                error: "direct_upload_required",
+                message: "Recordings must be uploaded directly to storage before finalize is called.",
+              },
+              413,
+            );
+          }
+          if (contentLength > 1024 * 1024) {
+            return json({ error: "request_too_large" }, 413);
+          }
+
           const body = (await request.json().catch(() => null)) as
             | { action?: string; [k: string]: unknown }
             | null;
@@ -53,47 +69,8 @@ export const Route = createFileRoute("/api/public/upload-recording")({
             const isFollowUp = body.is_follow_up === true;
             const storagePath = String(body.storage_path ?? "");
             const mime = String(body.mime_type ?? "video/webm");
-            const size = Number(body.size ?? 0);
+            const durationSeconds = Math.max(1, Math.round(Number(body.duration_seconds ?? 1)));
             if (!questionId || !storagePath) return json({ error: "invalid_request" }, 400);
-
-            // Best-effort transcription — skip when the file is large enough
-            // that downloading + forwarding to the gateway would blow the
-            // Worker's memory/CPU budget and cause a 502.
-            let transcript: string | null = null;
-            const MAX_TRANSCRIBE_BYTES = 20 * 1024 * 1024; // 20 MB
-            const key = process.env.LOVABLE_API_KEY;
-            if (key && size > 0 && size <= MAX_TRANSCRIBE_BYTES) {
-              try {
-                const { data: fileData, error: dlErr } = await supabaseAdmin.storage
-                  .from("interview-recordings")
-                  .download(storagePath);
-                if (!dlErr && fileData) {
-                  const buffer = new Uint8Array(await fileData.arrayBuffer());
-                  const ext = mime.includes("mp4") ? "mp4" : "webm";
-                  const audioForm = new FormData();
-                  audioForm.append("model", "openai/gpt-4o-mini-transcribe");
-                  audioForm.append(
-                    "file",
-                    new Blob([buffer as BlobPart], { type: mime }),
-                    `recording.${ext}`,
-                  );
-                  const tRes = await fetch(
-                    "https://ai.gateway.lovable.dev/v1/audio/transcriptions",
-                    { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: audioForm },
-                  );
-                  if (tRes.ok) {
-                    const tJson = (await tRes.json()) as { text?: string };
-                    transcript = tJson.text ?? null;
-                  } else {
-                    console.error("Transcription failed", tRes.status);
-                  }
-                }
-              } catch (err) {
-                console.error("Transcription error", err);
-              }
-            } else if (size > MAX_TRANSCRIBE_BYTES) {
-              console.warn(`Skipping transcription: file too large (${size} bytes)`);
-            }
 
             const { data: rec, error: recErr } = await supabaseAdmin
               .from("interview_recordings")
@@ -104,7 +81,8 @@ export const Route = createFileRoute("/api/public/upload-recording")({
                 storage_path: storagePath,
                 mime_type: mime,
                 is_follow_up: isFollowUp,
-                transcript,
+                duration_seconds: durationSeconds,
+                transcript: null,
               })
               .select()
               .single();
