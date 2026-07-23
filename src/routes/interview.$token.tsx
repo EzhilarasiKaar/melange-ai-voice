@@ -322,19 +322,51 @@ function Interview({
     setUploading(true);
     try {
       const q = queue[currentIdx];
-      const form = new FormData();
-      form.append("token", token);
-      form.append("question_id", q.id);
-      form.append("position", String(q.position));
-      form.append("is_follow_up", q.isFollowUp ? "true" : "false");
-      const ext = (blob.type || "video/webm").includes("mp4") ? "mp4" : "webm";
-      form.append("file", blob, `answer-${q.position}.${ext}`);
-      const res = await fetch("/api/public/upload-recording", { method: "POST", body: form });
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(t || "Upload failed");
-      }
-      const json = (await res.json()) as { ok: true; recording: { transcript: string | null } };
+      const mime = blob.type || "video/webm";
+
+      // 1) Get a signed upload URL so we bypass the serverless request-body
+      //    limits that a 4–5 minute video easily exceeds.
+      const urlRes = await fetch("/api/public/upload-recording", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "get_upload_url",
+          token,
+          position: q.position,
+          is_follow_up: q.isFollowUp,
+          mime_type: mime,
+        }),
+      });
+      if (!urlRes.ok) throw new Error((await urlRes.text().catch(() => "")) || "Upload URL failed");
+      const urlJson = (await urlRes.json()) as { path: string; token: string };
+
+      // 2) Upload the video straight to Storage from the browser.
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error: upErr } = await supabase.storage
+        .from("interview-recordings")
+        .uploadToSignedUrl(urlJson.path, urlJson.token, blob, {
+          contentType: mime,
+          upsert: false,
+        });
+      if (upErr) throw new Error(upErr.message);
+
+      // 3) Finalize — inserts the DB row and (best-effort) transcribes.
+      const finRes = await fetch("/api/public/upload-recording", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "finalize",
+          token,
+          question_id: q.id,
+          position: q.position,
+          is_follow_up: q.isFollowUp,
+          storage_path: urlJson.path,
+          mime_type: mime,
+          size: blob.size,
+        }),
+      });
+      if (!finRes.ok) throw new Error((await finRes.text().catch(() => "")) || "Upload failed");
+      const json = (await finRes.json()) as { ok: true; recording: { transcript: string | null } };
       const transcript = json.recording?.transcript ?? null;
       setLastTranscript(transcript);
 
