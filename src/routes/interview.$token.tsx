@@ -134,12 +134,19 @@ function Interview({
   // Recording state per question
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const recordingStartedAtRef = useRef<number>(0);
+  const stopTimerRef = useRef<number | null>(null);
+  const isStoppingRef = useRef(false);
   const [phase, setPhase] = useState<"speaking" | "recording" | "processing" | "review">("speaking");
   const [elapsed, setElapsed] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
 
   const cleanupMedia = useCallback(() => {
+    if (stopTimerRef.current !== null) {
+      window.clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
@@ -153,7 +160,8 @@ function Interview({
     return () => clearInterval(t);
   }, [phase]);
 
-  // Auto-stop at max duration
+  // Safety auto-stop at max duration. The exact timeout is also scheduled
+  // when recording starts so the captured video is always stopped and saved.
   useEffect(() => {
     if (phase === "recording" && elapsed >= maxDuration) {
       stopRecording();
@@ -266,6 +274,12 @@ function Interview({
   async function beginRecording() {
     if (!streamRef.current) return;
     chunksRef.current = [];
+    isStoppingRef.current = false;
+    recordingStartedAtRef.current = Date.now();
+    if (stopTimerRef.current !== null) {
+      window.clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
     let mimeType = "video/webm;codecs=vp9,opus";
     if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "video/webm";
     if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = "";
@@ -277,22 +291,43 @@ function Interview({
       if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
     };
     rec.onstop = async () => {
+      if (stopTimerRef.current !== null) {
+        window.clearTimeout(stopTimerRef.current);
+        stopTimerRef.current = null;
+      }
       const type = rec.mimeType || "video/webm";
       const blob = new Blob(chunksRef.current, { type });
+      const durationSeconds = Math.max(
+        1,
+        Math.round((Date.now() - recordingStartedAtRef.current) / 1000),
+      );
       chunksRef.current = [];
       setPhase("processing");
-      await uploadBlob(blob);
+      await uploadBlob(blob, durationSeconds);
     };
     // Flush chunks every second so data survives even if the final chunk is delayed
     rec.start(1000);
     setElapsed(0);
     setPhase("recording");
+    stopTimerRef.current = window.setTimeout(() => {
+      stopRecording();
+    }, Math.max(1, maxDuration) * 1000);
   }
 
   function stopRecording() {
     const rec = recorderRef.current;
     if (!rec || rec.state === "inactive") return;
-    rec.stop();
+    if (isStoppingRef.current) return;
+    isStoppingRef.current = true;
+    try {
+      if (rec.state === "recording") rec.requestData();
+    } catch {
+      // Some browsers can throw if requestData races with stop; stop still
+      // emits the final dataavailable event.
+    }
+    window.setTimeout(() => {
+      if (rec.state !== "inactive") rec.stop();
+    }, 100);
   }
 
   async function askCurrent() {
@@ -318,11 +353,13 @@ function Interview({
   }, [step.name, currentIdx]);
 
 
-  async function uploadBlob(blob: Blob) {
+  async function uploadBlob(blob: Blob, durationSeconds: number) {
     setUploading(true);
     try {
       const q = queue[currentIdx];
       const mime = blob.type || "video/webm";
+      if (!q) throw new Error("Missing question for recording");
+      if (blob.size <= 0) throw new Error("No video data was captured");
 
       // 1) Get a signed upload URL so we bypass the serverless request-body
       //    limits that a 4–5 minute video easily exceeds.
@@ -363,6 +400,7 @@ function Interview({
           storage_path: urlJson.path,
           mime_type: mime,
           size: blob.size,
+          duration_seconds: durationSeconds,
         }),
       });
       if (!finRes.ok) throw new Error((await finRes.text().catch(() => "")) || "Upload failed");
