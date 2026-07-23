@@ -12,6 +12,21 @@ export const Route = createFileRoute("/api/public/upload-recording")({
     handlers: {
       POST: async ({ request }) => {
         try {
+          const contentType = request.headers.get("content-type") ?? "";
+          const contentLength = Number(request.headers.get("content-length") ?? 0);
+          if (!contentType.toLowerCase().includes("application/json")) {
+            return json(
+              {
+                error: "direct_upload_required",
+                message: "Recordings must be uploaded directly to storage before finalize is called.",
+              },
+              413,
+            );
+          }
+          if (contentLength > 1024 * 1024) {
+            return json({ error: "request_too_large" }, 413);
+          }
+
           const body = (await request.json().catch(() => null)) as
             | { action?: string; [k: string]: unknown }
             | null;
