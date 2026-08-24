@@ -410,7 +410,7 @@ function Interview({
   }, [step.name, currentIdx]);
 
 
-  async function uploadBlob(blob: Blob, durationSeconds: number) {
+  async function uploadBlob(blob: Blob, durationSeconds: number, audioBlob?: Blob | null) {
     setUploading(true);
     try {
       const q = queue[currentIdx];
@@ -418,24 +418,30 @@ function Interview({
       if (!q) throw new Error("Missing question for recording");
       if (blob.size <= 0) throw new Error("No video data was captured");
 
+      const { supabase } = await import("@/integrations/supabase/client");
+
+      async function getUploadTarget(kind: "video" | "audio", mimeType: string) {
+        const res = await fetch("/api/public/upload-recording", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "get_upload_url",
+            token,
+            kind,
+            position: q!.position,
+            is_follow_up: q!.isFollowUp,
+            mime_type: mimeType,
+          }),
+        });
+        if (!res.ok) throw new Error((await res.text().catch(() => "")) || "Upload URL failed");
+        return (await res.json()) as { path: string; token: string };
+      }
+
       // 1) Get a signed upload URL so we bypass the serverless request-body
       //    limits that a 4–5 minute video easily exceeds.
-      const urlRes = await fetch("/api/public/upload-recording", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "get_upload_url",
-          token,
-          position: q.position,
-          is_follow_up: q.isFollowUp,
-          mime_type: mime,
-        }),
-      });
-      if (!urlRes.ok) throw new Error((await urlRes.text().catch(() => "")) || "Upload URL failed");
-      const urlJson = (await urlRes.json()) as { path: string; token: string };
+      const urlJson = await getUploadTarget("video", mime);
 
       // 2) Upload the video straight to Storage from the browser.
-      const { supabase } = await import("@/integrations/supabase/client");
       const { error: upErr } = await supabase.storage
         .from("interview-recordings")
         .uploadToSignedUrl(urlJson.path, urlJson.token, blob, {
@@ -444,7 +450,26 @@ function Interview({
         });
       if (upErr) throw new Error(upErr.message);
 
-      // 3) Finalize — inserts the DB row and (best-effort) transcribes.
+      // 2b) Upload the small audio-only copy used for transcription.
+      let audioPath: string | null = null;
+      if (audioBlob && audioBlob.size > 0) {
+        try {
+          const audioMime = audioBlob.type || "audio/webm";
+          const audioTarget = await getUploadTarget("audio", audioMime);
+          const { error: aErr } = await supabase.storage
+            .from("interview-recordings")
+            .uploadToSignedUrl(audioTarget.path, audioTarget.token, audioBlob, {
+              contentType: audioMime,
+              upsert: false,
+            });
+          if (aErr) throw new Error(aErr.message);
+          audioPath = audioTarget.path;
+        } catch (err) {
+          console.error("audio upload failed", err);
+        }
+      }
+
+      // 3) Finalize — inserts the DB row and transcribes from the audio copy.
       const finRes = await fetch("/api/public/upload-recording", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -455,6 +480,7 @@ function Interview({
           position: q.position,
           is_follow_up: q.isFollowUp,
           storage_path: urlJson.path,
+          audio_path: audioPath,
           mime_type: mime,
           size: blob.size,
           duration_seconds: durationSeconds,
@@ -462,6 +488,7 @@ function Interview({
       });
       if (!finRes.ok) throw new Error((await finRes.text().catch(() => "")) || "Upload failed");
       const json = (await finRes.json()) as { ok: true; recording: { transcript: string | null } };
+
       const transcript = json.recording?.transcript ?? null;
       setLastTranscript(transcript);
 
