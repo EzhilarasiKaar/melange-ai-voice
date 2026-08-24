@@ -52,9 +52,10 @@ export const Route = createFileRoute("/api/public/upload-recording")({
           if (body.action === "get_upload_url") {
             const position = Number(body.position ?? 0);
             const isFollowUp = body.is_follow_up === true;
-            const mime = String(body.mime_type ?? "video/webm");
-            const ext = mime.includes("mp4") ? "mp4" : "webm";
-            const path = `${invitation.id}/${position}${isFollowUp ? "-followup" : ""}-${Date.now()}.${ext}`;
+            const kind = body.kind === "audio" ? "audio" : "video";
+            const mime = String(body.mime_type ?? (kind === "audio" ? "audio/webm" : "video/webm"));
+            const ext = kind === "audio" ? (mime.includes("mp4") ? "m4a" : "webm") : mime.includes("mp4") ? "mp4" : "webm";
+            const path = `${invitation.id}/${position}${isFollowUp ? "-followup" : ""}-${Date.now()}${kind === "audio" ? "-audio" : ""}.${ext}`;
 
             const { data, error } = await supabaseAdmin.storage
               .from("interview-recordings")
@@ -68,6 +69,7 @@ export const Route = createFileRoute("/api/public/upload-recording")({
             const position = Number(body.position ?? 0);
             const isFollowUp = body.is_follow_up === true;
             const storagePath = String(body.storage_path ?? "");
+            const audioPath = body.audio_path ? String(body.audio_path) : null;
             const mime = String(body.mime_type ?? "video/webm");
             const durationSeconds = Math.max(1, Math.round(Number(body.duration_seconds ?? 1)));
             if (!questionId || !storagePath) return json({ error: "invalid_request" }, 400);
@@ -79,17 +81,51 @@ export const Route = createFileRoute("/api/public/upload-recording")({
                 question_id: questionId,
                 position,
                 storage_path: storagePath,
+                audio_path: audioPath,
                 mime_type: mime,
                 is_follow_up: isFollowUp,
                 duration_seconds: durationSeconds,
                 transcript: null,
+                transcript_status: audioPath ? "pending" : "failed",
               })
               .select()
               .single();
             if (recErr) return json({ error: recErr.message }, 500);
 
-            return json({ ok: true, recording: { id: rec.id, transcript: rec.transcript } });
+            // Transcribe from the small audio-only copy. This never touches the
+            // video file, so serverless memory stays well within limits.
+            let transcript: string | null = null;
+            let transcriptStatus = audioPath ? "pending" : "failed";
+            if (audioPath) {
+              try {
+                const { transcribeAudioPath } = await import("@/lib/transcribe.server");
+                const result = await transcribeAudioPath(audioPath);
+                transcript = result.transcript;
+                transcriptStatus = result.status === "done" ? "done" : "failed";
+                await supabaseAdmin
+                  .from("interview_recordings")
+                  .update({
+                    transcript: result.transcript,
+                    transcript_segments: result.segments,
+                    transcript_status: transcriptStatus,
+                  })
+                  .eq("id", rec.id);
+              } catch (err) {
+                console.error("transcription error", err);
+                transcriptStatus = "failed";
+                await supabaseAdmin
+                  .from("interview_recordings")
+                  .update({ transcript_status: "failed" })
+                  .eq("id", rec.id);
+              }
+            }
+
+            return json({
+              ok: true,
+              recording: { id: rec.id, transcript, transcript_status: transcriptStatus },
+            });
           }
+
 
           return json({ error: "unknown_action" }, 400);
         } catch (err) {

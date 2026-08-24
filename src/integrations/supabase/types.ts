@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       interview_recordings: {
         Row: {
+          audio_path: string | null
           created_at: string
           duration_seconds: number | null
           id: string
@@ -26,8 +27,11 @@ export type Database = {
           question_id: string
           storage_path: string
           transcript: string | null
+          transcript_segments: Json | null
+          transcript_status: string
         }
         Insert: {
+          audio_path?: string | null
           created_at?: string
           duration_seconds?: number | null
           id?: string
@@ -38,8 +42,11 @@ export type Database = {
           question_id: string
           storage_path: string
           transcript?: string | null
+          transcript_segments?: Json | null
+          transcript_status?: string
         }
         Update: {
+          audio_path?: string | null
           created_at?: string
           duration_seconds?: number | null
           id?: string
@@ -50,6 +57,8 @@ export type Database = {
           question_id?: string
           storage_path?: string
           transcript?: string | null
+          transcript_segments?: Json | null
+          transcript_status?: string
         }
         Relationships: [
           {
