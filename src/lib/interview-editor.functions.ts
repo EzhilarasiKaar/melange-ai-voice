@@ -235,6 +235,24 @@ export const getRecordingUrl = createServerFn({ method: "GET" })
     return { url: signed.signedUrl };
   });
 
+export const retranscribeRecording = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    // Confirm the caller can see this recording under RLS before using admin.
+    const { data: rec, error } = await context.supabase
+      .from("interview_recordings")
+      .select("id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!rec) throw new Error("Recording not found");
+
+    const { transcribeRecordingRow } = await import("./transcribe.server");
+    return transcribeRecordingRow(data.id);
+  });
+
+
 // ---------- Overview stats ----------
 
 export const getOverviewStats = createServerFn({ method: "GET" })
