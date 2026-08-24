@@ -271,6 +271,60 @@ function Interview({
     }
   }
 
+  // Audio-only companion recording (small — used for transcription)
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const audioBlobPromiseRef = useRef<Promise<Blob | null> | null>(null);
+
+  function beginAudioRecording() {
+    audioChunksRef.current = [];
+    audioRecorderRef.current = null;
+    audioBlobPromiseRef.current = null;
+    const tracks = streamRef.current?.getAudioTracks() ?? [];
+    if (tracks.length === 0) return;
+    try {
+      const audioStream = new MediaStream(tracks);
+      let mime = "audio/webm;codecs=opus";
+      if (!MediaRecorder.isTypeSupported(mime)) mime = "audio/webm";
+      if (!MediaRecorder.isTypeSupported(mime)) mime = "";
+      const arec = mime
+        ? new MediaRecorder(audioStream, { mimeType: mime, audioBitsPerSecond: 64000 })
+        : new MediaRecorder(audioStream);
+      audioRecorderRef.current = arec;
+      audioBlobPromiseRef.current = new Promise<Blob | null>((resolve) => {
+        arec.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        arec.onstop = () => {
+          const blob = new Blob(audioChunksRef.current, {
+            type: arec.mimeType || "audio/webm",
+          });
+          audioChunksRef.current = [];
+          resolve(blob.size > 0 ? blob : null);
+        };
+        arec.onerror = () => resolve(null);
+      });
+      arec.start(1000);
+    } catch (err) {
+      console.error("audio recorder failed", err);
+      audioRecorderRef.current = null;
+      audioBlobPromiseRef.current = null;
+    }
+  }
+
+  async function collectAudioBlob(): Promise<Blob | null> {
+    const arec = audioRecorderRef.current;
+    if (!arec || !audioBlobPromiseRef.current) return null;
+    try {
+      if (arec.state === "recording") arec.requestData();
+    } catch {
+      // ignore
+    }
+    if (arec.state !== "inactive") arec.stop();
+    const timeout = new Promise<null>((r) => window.setTimeout(() => r(null), 8000));
+    return Promise.race([audioBlobPromiseRef.current, timeout]);
+  }
+
   async function beginRecording() {
     if (!streamRef.current) return;
     chunksRef.current = [];
@@ -303,16 +357,19 @@ function Interview({
       );
       chunksRef.current = [];
       setPhase("processing");
-      await uploadBlob(blob, durationSeconds);
+      const audioBlob = await collectAudioBlob();
+      await uploadBlob(blob, durationSeconds, audioBlob);
     };
     // Flush chunks every second so data survives even if the final chunk is delayed
     rec.start(1000);
+    beginAudioRecording();
     setElapsed(0);
     setPhase("recording");
     stopTimerRef.current = window.setTimeout(() => {
       stopRecording();
     }, Math.max(1, maxDuration) * 1000);
   }
+
 
   function stopRecording() {
     const rec = recorderRef.current;
