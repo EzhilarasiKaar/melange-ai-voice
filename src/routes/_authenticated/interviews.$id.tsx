@@ -103,6 +103,9 @@ function InterviewViewer() {
       const q = (r.template_questions as unknown as { prompt: string } | null)?.prompt ?? "";
       const dur = Math.max(1, r.duration_seconds ?? 5);
       const transcript = (r.transcript ?? "").trim();
+      const segments = (r.transcript_segments as unknown as
+        | Array<{ start: number; end: number; text: string }>
+        | null) ?? null;
       // Question cue (2s)
       const qStart = cursor;
       const qEnd = cursor + 2;
@@ -111,8 +114,18 @@ function InterviewViewer() {
       );
       cursor = qEnd;
 
-      if (transcript) {
-        // Split transcript into ~sentences and distribute across the recording duration
+      if (segments && segments.length > 0) {
+        // Real timings from the speech-to-text model, offset by the cursor.
+        let last = 0;
+        segments.forEach((s) => {
+          const start = cursor + Math.max(0, Number(s.start) || 0);
+          const end = cursor + Math.max(Number(s.start) || 0 + 1, Number(s.end) || 0);
+          cues.push(`${idx++}\n${fmtSrtTime(start)} --> ${fmtSrtTime(end)}\n${s.text.trim()}\n`);
+          last = Math.max(last, Number(s.end) || 0);
+        });
+        cursor += Math.max(last, dur);
+      } else if (transcript) {
+        // Fallback: distribute sentences evenly across the recording duration
         const parts = transcript.match(/[^.!?]+[.!?]+|\S[^.!?]*$/g) ?? [transcript];
         const per = dur / parts.length;
         parts.forEach((p) => {
@@ -125,6 +138,10 @@ function InterviewViewer() {
         cursor += dur;
       }
     });
+    if (cues.length === 0) {
+      toast.error("No transcript available to build subtitles yet.");
+      return;
+    }
     const blob = new Blob([cues.join("\n")], { type: "application/x-subrip;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -135,6 +152,7 @@ function InterviewViewer() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+
 
 
   const inv = data.invitation;
