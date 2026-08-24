@@ -1,21 +1,26 @@
-# Reactivate cancelled invitations
+# Fix transcript and subtitle generation
 
-Yes — cancelling only marks the invitation as `cancelled`; the token and link are untouched, so a cancelled link can be switched back on.
+## What's wrong today
 
-## What you'll get
+Transcription is currently not happening at all. Every recording row in the database has an empty transcript (verified: 7 of 7 recordings, including today's). When the earlier 502/memory problem was fixed, the transcription step was removed from the upload endpoint and never replaced — the recording row is now saved with `transcript: null` always.
 
-- A "Reactivate" action on cancelled rows in the Invitations table (circular-arrow icon, same spot as the current cancel icon).
-- Clicking it restores the invitation to **Pending** and pushes the expiry out 14 days from now, so the original link starts working again immediately.
-- A confirmation toast, plus the table refreshing on success.
-- The same original interview link keeps working — no new link is generated, so anything already shared with the leader stays valid.
+Because subtitles are generated from those transcripts, the `.srt` download produces only question headings and no spoken text. The SRT timings are also synthetic (sentences spread evenly over the clip duration), so even with text they would drift out of sync.
 
-## Notes
+## The fix
 
-- Only invitations with status `cancelled` show the action. Completed interviews stay locked (reopening them would risk overwriting existing recordings and the AI summary).
-- If the invitation had already started before being cancelled, it returns to Pending and the leader restarts from the consent screen; any recordings already captured stay in place.
+1. **Capture audio separately while recording.** During each question, the interview page records a second, audio-only stream alongside the video. Audio-only is roughly 1 MB per minute instead of tens of MB, so it can be transcribed without hitting backend memory limits.
+2. **Upload the audio directly to storage**, using the same signed-upload approach as the video (browser to storage, never through the backend).
+3. **Transcribe from the small audio file** in a background call after the recording row is saved, requesting word/segment timestamps from the speech-to-text model, and store both the plain transcript and the timed segments on the recording.
+4. **Build real subtitles from those timestamps** so the `.srt` file is properly in sync, with a fallback to the current even-distribution method when timestamps are unavailable.
+5. **Add a "Generate transcript" action** in the interview viewer for recordings that have no transcript yet (for example if the transcription call failed), so the editorial team can retry without re-recording.
+6. **Show transcript status** in the viewer: "Transcribing…", "No transcript" with the retry action, or the transcript text.
+
+Note: recordings made before this change have no stored audio, so they cannot be transcribed retroactively. New interviews will have transcripts, and the AI summary (which reads transcripts) will start producing real content again.
 
 ## Technical details
 
-- `src/lib/interview-editor.functions.ts`: add a `reactivateInvitation` server function (auth-gated like `cancelInvitation`) that updates the row to `status: "pending"`, `expires_at` = now + 14 days, and clears `started_at`, filtered by `.eq("status", "cancelled")` so it can never revive a completed interview.
-- `src/routes/_authenticated/invitations.tsx`: wire the new function with `useServerFn`, add a `handleReactivate` handler with confirm + toast + `invalidateQueries(["invitations"])`, and render a `RotateCcw` icon button when `inv.status === "cancelled"`.
-- No schema change needed; `src/lib/interview-public.functions.ts` already gates on status/expiry, so a reactivated token flows normally again.
+- `src/routes/interview.$token.tsx`: add a second `MediaRecorder` over an audio-only `MediaStream` (audio track from the existing stream), started/stopped with the video recorder. On stop, request a signed upload URL for an `.webm` audio path, upload directly, then include `audio_path` in the finalize call.
+- `src/routes/api/public/upload-recording.ts`: `get_upload_url` accepts a `kind: "video" | "audio"` so it can mint audio paths; `finalize` stores `audio_path` and then transcribes by streaming the audio object from storage into the Lovable AI Gateway transcription endpoint (`whisper-1`, `response_format: verbose_json`) with a conservative size guard. Store `transcript` plus `transcript_segments` (jsonb). Transcription failure never fails the finalize response.
+- Migration: add `audio_path text`, `transcript_segments jsonb`, `transcript_status text` columns to `interview_recordings` (nullable, defaults), no policy changes needed since writes go through the server key.
+- New server function `retranscribeRecording` in `src/lib/interview-editor.functions.ts` (auth-protected) to re-run transcription for one recording.
+- `src/routes/_authenticated/interviews.$id.tsx`: `downloadSrt` uses `transcript_segments` offsets per recording when present; keep the existing sentence-distribution path as fallback. Add per-recording retry button and status text.
