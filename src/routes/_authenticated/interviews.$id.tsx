@@ -25,6 +25,8 @@ function InterviewViewer() {
   const getFn = useServerFn(getInterview);
   const urlFn = useServerFn(getRecordingUrl);
   const retryFn = useServerFn(retranscribeRecording);
+  const audioUrlFn = useServerFn(createAudioUploadUrl);
+  const attachFn = useServerFn(attachAudioAndTranscribe);
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery({
     queryKey: ["interview", id],
