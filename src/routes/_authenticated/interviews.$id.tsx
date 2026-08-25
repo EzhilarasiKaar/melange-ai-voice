@@ -240,9 +240,15 @@ function InterviewViewer() {
                         {r.is_follow_up && " · follow-up"}
                       </p>
                       <p className="mt-1 font-medium">{q}</p>
-                      {r.transcript && (
+                      {r.transcript ? (
                         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                           {r.transcript}
+                        </p>
+                      ) : (
+                        <p className="mt-3 text-sm italic text-muted-foreground">
+                          {r.audio_path
+                            ? "No transcript yet — you can generate it."
+                            : "No audio was captured for this recording, so it can't be transcribed."}
                         </p>
                       )}
                     </div>
@@ -265,7 +271,22 @@ function InterviewViewer() {
                         <Download className="mr-1 size-3.5" />
                         Download
                       </Button>
+                      {r.audio_path && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={retryingId === r.id}
+                          onClick={() => retryTranscript(r.id)}
+                          className="rounded-full"
+                        >
+                          <RefreshCw
+                            className={`mr-1 size-3.5 ${retryingId === r.id ? "animate-spin" : ""}`}
+                          />
+                          {r.transcript ? "Redo transcript" : "Generate transcript"}
+                        </Button>
+                      )}
                     </div>
+
 
                   </div>
                 </Card>
