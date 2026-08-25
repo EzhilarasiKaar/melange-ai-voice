@@ -55,6 +55,36 @@ function InterviewViewer() {
     }
   }
 
+  // Older recordings have no separate audio file: extract it from the stored
+  // video in the browser, upload it, then transcribe.
+  async function extractAndTranscribe(recId: string, storagePath: string) {
+    setRetryingId(recId);
+    try {
+      toast.info("Extracting audio from the recording…");
+      const { url } = await urlFn({ data: { path: storagePath } });
+      const wav = await extractWavFromVideoUrl(url);
+      if (wav.size < 2048) throw new Error("No audible audio in this recording");
+
+      const { path, token } = await audioUrlFn({ data: { id: recId } });
+      const { error } = await supabase.storage
+        .from("interview-recordings")
+        .uploadToSignedUrl(path, token, wav, { contentType: "audio/wav" });
+      if (error) throw new Error(error.message);
+
+      toast.info("Transcribing…");
+      const res = await attachFn({ data: { id: recId, audio_path: path } });
+      if (res.status === "done") toast.success("Transcript generated");
+      else toast.error(res.error ?? "Transcription failed");
+      await queryClient.invalidateQueries({ queryKey: ["interview", id] });
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Could not generate transcript");
+    } finally {
+      setRetryingId(null);
+    }
+  }
+
+
   async function play(path: string, recId: string) {
     setActiveId(recId);
     setActiveUrl(null);
