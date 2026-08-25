@@ -5,7 +5,11 @@ import {
   getInterview,
   getRecordingUrl,
   retranscribeRecording,
+  createAudioUploadUrl,
+  attachAudioAndTranscribe,
 } from "@/lib/interview-editor.functions";
+import { extractWavFromVideoUrl } from "@/lib/audio-extract";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Play, Quote, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -21,6 +25,8 @@ function InterviewViewer() {
   const getFn = useServerFn(getInterview);
   const urlFn = useServerFn(getRecordingUrl);
   const retryFn = useServerFn(retranscribeRecording);
+  const audioUrlFn = useServerFn(createAudioUploadUrl);
+  const attachFn = useServerFn(attachAudioAndTranscribe);
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery({
     queryKey: ["interview", id],
@@ -48,6 +54,36 @@ function InterviewViewer() {
       setRetryingId(null);
     }
   }
+
+  // Older recordings have no separate audio file: extract it from the stored
+  // video in the browser, upload it, then transcribe.
+  async function extractAndTranscribe(recId: string, storagePath: string) {
+    setRetryingId(recId);
+    try {
+      toast.info("Extracting audio from the recording…");
+      const { url } = await urlFn({ data: { path: storagePath } });
+      const wav = await extractWavFromVideoUrl(url);
+      if (wav.size < 2048) throw new Error("No audible audio in this recording");
+
+      const { path, token } = await audioUrlFn({ data: { id: recId } });
+      const { error } = await supabase.storage
+        .from("interview-recordings")
+        .uploadToSignedUrl(path, token, wav, { contentType: "audio/wav" });
+      if (error) throw new Error(error.message);
+
+      toast.info("Transcribing…");
+      const res = await attachFn({ data: { id: recId, audio_path: path } });
+      if (res.status === "done") toast.success("Transcript generated");
+      else toast.error(res.error ?? "Transcription failed");
+      await queryClient.invalidateQueries({ queryKey: ["interview", id] });
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Could not generate transcript");
+    } finally {
+      setRetryingId(null);
+    }
+  }
+
 
   async function play(path: string, recId: string) {
     setActiveId(recId);
@@ -274,7 +310,7 @@ function InterviewViewer() {
                         <p className="mt-3 text-sm italic text-muted-foreground">
                           {r.audio_path
                             ? "No transcript yet — you can generate it."
-                            : "No audio was captured for this recording, so it can't be transcribed."}
+                            : "No transcript yet — audio will be extracted from the video."}
                         </p>
                       )}
                     </div>
@@ -297,18 +333,26 @@ function InterviewViewer() {
                         <Download className="mr-1 size-3.5" />
                         Download
                       </Button>
-                      {r.audio_path && (
+                      {(
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={retryingId === r.id}
-                          onClick={() => retryTranscript(r.id)}
+                          onClick={() =>
+                            r.audio_path
+                              ? retryTranscript(r.id)
+                              : extractAndTranscribe(r.id, r.storage_path)
+                          }
                           className="rounded-full"
                         >
                           <RefreshCw
                             className={`mr-1 size-3.5 ${retryingId === r.id ? "animate-spin" : ""}`}
                           />
-                          {r.transcript ? "Redo transcript" : "Generate transcript"}
+                          {retryingId === r.id
+                            ? "Working…"
+                            : r.transcript
+                              ? "Redo transcript"
+                              : "Generate transcript"}
                         </Button>
                       )}
                     </div>
