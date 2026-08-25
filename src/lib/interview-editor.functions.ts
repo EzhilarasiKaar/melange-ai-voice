@@ -252,6 +252,59 @@ export const retranscribeRecording = createServerFn({ method: "POST" })
     return transcribeRecordingRow(data.id);
   });
 
+// For interviews recorded before audio-only capture existed: the editor's
+// browser extracts the audio track from the stored video and uploads it here,
+// then transcription runs from that small WAV file.
+export const createAudioUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { data: rec, error } = await context.supabase
+      .from("interview_recordings")
+      .select("id, invitation_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!rec) throw new Error("Recording not found");
+
+    const path = `${rec.invitation_id}/${rec.id}-extracted-${Date.now()}.wav`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: signed, error: sErr } = await supabaseAdmin.storage
+      .from("interview-recordings")
+      .createSignedUploadUrl(path);
+    if (sErr || !signed) throw new Error(sErr?.message ?? "Could not prepare upload");
+    return { path: signed.path, token: signed.token };
+  });
+
+export const attachAudioAndTranscribe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), audio_path: z.string().min(1) }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: rec, error } = await context.supabase
+      .from("interview_recordings")
+      .select("id, invitation_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!rec) throw new Error("Recording not found");
+    if (!data.audio_path.startsWith(`${rec.invitation_id}/`)) {
+      throw new Error("Invalid audio path");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: uErr } = await supabaseAdmin
+      .from("interview_recordings")
+      .update({ audio_path: data.audio_path, transcript_status: "pending" })
+      .eq("id", data.id);
+    if (uErr) throw new Error(uErr.message);
+
+    const { transcribeRecordingRow } = await import("./transcribe.server");
+    return transcribeRecordingRow(data.id);
+  });
+
+
 
 // ---------- Overview stats ----------
 
