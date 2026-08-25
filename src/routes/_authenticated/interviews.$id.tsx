@@ -310,7 +310,7 @@ function InterviewViewer() {
                         <p className="mt-3 text-sm italic text-muted-foreground">
                           {r.audio_path
                             ? "No transcript yet — you can generate it."
-                            : "No audio was captured for this recording, so it can't be transcribed."}
+                            : "No transcript yet — audio will be extracted from the video."}
                         </p>
                       )}
                     </div>
