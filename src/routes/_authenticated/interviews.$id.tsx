@@ -5,7 +5,11 @@ import {
   getInterview,
   getRecordingUrl,
   retranscribeRecording,
+  createAudioUploadUrl,
+  attachAudioAndTranscribe,
 } from "@/lib/interview-editor.functions";
+import { extractWavFromVideoUrl } from "@/lib/audio-extract";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Play, Quote, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
