@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getInterview, getRecordingUrl } from "@/lib/interview-editor.functions";
+import {
+  getInterview,
+  getRecordingUrl,
+  retranscribeRecording,
+} from "@/lib/interview-editor.functions";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Play, Quote, Download } from "lucide-react";
+import { ArrowLeft, Play, Quote, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -16,6 +20,8 @@ function InterviewViewer() {
   const { id } = Route.useParams();
   const getFn = useServerFn(getInterview);
   const urlFn = useServerFn(getRecordingUrl);
+  const retryFn = useServerFn(retranscribeRecording);
+  const queryClient = useQueryClient();
   const { data } = useSuspenseQuery({
     queryKey: ["interview", id],
     queryFn: () => getFn({ data: { id } }),
@@ -23,6 +29,25 @@ function InterviewViewer() {
 
   const [activeUrl, setActiveUrl] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  async function retryTranscript(recId: string) {
+    setRetryingId(recId);
+    try {
+      const res = await retryFn({ data: { id: recId } });
+      if (res.status === "done") {
+        toast.success("Transcript generated");
+      } else {
+        toast.error(res.error ?? "Transcription failed");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["interview", id] });
+    } catch (err) {
+      console.error(err);
+      toast.error("Transcription failed");
+    } finally {
+      setRetryingId(null);
+    }
+  }
 
   async function play(path: string, recId: string) {
     setActiveId(recId);
@@ -30,6 +55,7 @@ function InterviewViewer() {
     const { url } = await urlFn({ data: { path } });
     setActiveUrl(url);
   }
+
 
   async function downloadFile(url: string, filename: string) {
     try {
