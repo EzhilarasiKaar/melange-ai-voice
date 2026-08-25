@@ -333,18 +333,26 @@ function InterviewViewer() {
                         <Download className="mr-1 size-3.5" />
                         Download
                       </Button>
-                      {r.audio_path && (
+                      {(
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={retryingId === r.id}
-                          onClick={() => retryTranscript(r.id)}
+                          onClick={() =>
+                            r.audio_path
+                              ? retryTranscript(r.id)
+                              : extractAndTranscribe(r.id, r.storage_path)
+                          }
                           className="rounded-full"
                         >
                           <RefreshCw
                             className={`mr-1 size-3.5 ${retryingId === r.id ? "animate-spin" : ""}`}
                           />
-                          {r.transcript ? "Redo transcript" : "Generate transcript"}
+                          {retryingId === r.id
+                            ? "Working…"
+                            : r.transcript
+                              ? "Redo transcript"
+                              : "Generate transcript"}
                         </Button>
                       )}
                     </div>
