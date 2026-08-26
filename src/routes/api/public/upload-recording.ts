@@ -98,15 +98,18 @@ export const Route = createFileRoute("/api/public/upload-recording")({
             let transcriptStatus = audioPath ? "pending" : "failed";
             if (audioPath) {
               try {
-                const { transcribeAudioPath } = await import("@/lib/transcribe.server");
+                const { estimateTranscriptSegments, transcribeAudioPath } = await import("@/lib/transcribe.server");
                 const result = await transcribeAudioPath(audioPath);
                 transcript = result.transcript;
                 transcriptStatus = result.status === "done" ? "done" : "failed";
+                const segments = result.transcript
+                  ? estimateTranscriptSegments(result.transcript, durationSeconds)
+                  : null;
                 await supabaseAdmin
                   .from("interview_recordings")
                   .update({
                     transcript: result.transcript,
-                    transcript_segments: result.segments,
+                    transcript_segments: result.segments ?? segments,
                     transcript_status: transcriptStatus,
                   })
                   .eq("id", rec.id);
