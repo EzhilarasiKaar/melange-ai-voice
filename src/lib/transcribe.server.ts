@@ -36,7 +36,13 @@ function extractErrorMessage(status: number, body: string) {
     const parsed = JSON.parse(body) as { message?: string; error?: { message?: string } | string };
     if (typeof parsed.message === "string") return parsed.message;
     if (typeof parsed.error === "string") return parsed.error;
-    if (typeof parsed.error?.message === "string") return parsed.error.message;
+    if (
+      parsed.error &&
+      typeof parsed.error === "object" &&
+      typeof parsed.error.message === "string"
+    ) {
+      return parsed.error.message;
+    }
   } catch {
     // Fall through to plain text.
   }
@@ -81,6 +87,22 @@ async function readStreamingTranscript(response: Response) {
           // Ignore malformed SSE data lines; the final empty transcript guard
           // below will surface a clear failure if no usable text arrives.
         }
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    for (const line of buffer.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const payload = trimmed.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(payload) as { type?: string; delta?: string; text?: string };
+        if (parsed.type === "transcript.text.delta" && parsed.delta) transcript += parsed.delta;
+        if (parsed.type === "transcript.text.done" && parsed.text) doneText = parsed.text;
+      } catch {
+        // Ignore malformed final SSE data.
       }
     }
   }
